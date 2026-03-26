@@ -13,6 +13,7 @@ import { CreateElement } from "@/seqta/utils/CreateEnable/CreateElement";
 import { FilterUpcomingAssessments } from "@/seqta/utils/FilterUpcomingAssessments";
 import { getMockNotices } from "@/seqta/ui/dev/hideSensitiveContent";
 import { setupFixedTooltips } from "@/seqta/utils/fixedTooltip";
+import { openNoticeModal } from "@/seqta/ui/notices/openNoticeModal";
 
 // Flag to prevent multiple simultaneous loads
 let isLoadingHomePage = false;
@@ -663,7 +664,9 @@ async function loadTeachHomePageContent() {
   });
 
   // Create homepage root container with scrollable styling
-  const homeRoot = stringToHTML(`<div id="betterseqta-teach-home" class="home-root" style="overflow-y: auto; height: 100vh; max-height: 100vh;"></div>`);
+  const homeRoot = stringToHTML(
+    `<div id="betterseqta-teach-home" class="home-root betterseqta-teach-home-root"></div>`,
+  );
   const homeContainer = homeRoot.firstChild as HTMLElement;
   
   if (!homeContainer) {
@@ -2340,24 +2343,10 @@ function createNoticeElement(notice: any, colour: string | undefined): Node {
   const element = stringToHTML(htmlContent).firstChild as HTMLElement;
   if (element) {
     element.addEventListener("click", () =>
-      openNoticeModal(notice),
+      openNoticeModal(notice, colour, element),
     );
   }
   return element!;
-}
-
-function openNoticeModal(notice: any) {
-  // Simplified notice modal - can be expanded later
-  const cleanContent = notice.contents
-    ?.replace(/\[\[[\w]+[:][\w]+[\]\]]+/g, "")
-    ?.replace(/ +/, " ") || "";
-
-  const existingModal = document.getElementById("notice-modal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  alert(`${notice.title || "Notice"}\n\n${cleanContent.substring(0, 500)}`);
 }
 
 /**

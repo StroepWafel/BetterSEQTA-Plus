@@ -14,7 +14,7 @@ interface CachedPlatformData {
 }
 
 const STORAGE_KEY_PREFIX = 'betterseqta_platform_';
-const CACHE_VERSION = 1; // Increment to invalidate old cache
+const CACHE_VERSION = 2; // Increment to invalidate old cache (v2: Learn hash routes + DOM validation)
 
 /**
  * Gets a cache key based on the current domain
@@ -34,18 +34,34 @@ async function getCachedPlatform(): Promise<SEQTAPlatform | null> {
     const cachedData = cached[cacheKey] as CachedPlatformData | undefined;
     
     if (cachedData && 'platform' in cachedData && 'version' in cachedData && cachedData.version === CACHE_VERSION) {
-      // Verify the cached platform is still valid by checking URL
+      // Verify the cached platform is still valid by checking URL + DOM
       const url = window.location.href.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
       const cachedPlatform = cachedData.platform;
-      
+
+      const learnLikeDom = isLearnLikeDOM();
+      const teachLikeDom = isTeachLikeDOM();
+
       // Quick validation: if URL clearly indicates a different platform, invalidate cache
       if (cachedPlatform === 'teach' && (url.includes('/learn/') || url.includes('/student/'))) {
-        return null; // Cache invalid
+        return null;
       }
       if (cachedPlatform === 'learn' && (url.includes('/teach/') || url.includes('/ta/'))) {
-        return null; // Cache invalid
+        return null;
       }
-      
+      // Hash-based Learn routes (e.g. #?page=/home) without /learn/ in pathname
+      if (cachedPlatform === 'teach' && (hash.includes('page=') || hash.includes('/learn')) && learnLikeDom) {
+        return null;
+      }
+      // Stale teach cache while on Learn UI
+      if (cachedPlatform === 'teach' && learnLikeDom && !teachLikeDom) {
+        return null;
+      }
+      // Stale learn cache while on Teach UI
+      if (cachedPlatform === 'learn' && teachLikeDom && !learnLikeDom) {
+        return null;
+      }
+
       return cachedPlatform;
     }
   } catch (error) {
@@ -78,6 +94,21 @@ async function setCachedPlatform(platform: SEQTAPlatform): Promise<void> {
  * @param forceRefresh - If true, bypasses cache and forces re-detection
  * @returns The detected platform type
  */
+/** Learn student/parent UI: left #menu + typical body class */
+function isLearnLikeDOM(): boolean {
+  if (!document.body) return false;
+  const hasMenu = !!document.querySelector('#menu');
+  const role =
+    document.body.classList.contains('student') ||
+    document.body.classList.contains('parent');
+  return hasMenu && role;
+}
+
+/** Teach: Spine navigation (avoid broad [id*=ta] heuristics) */
+function isTeachLikeDOM(): boolean {
+  return !!document.querySelector('[class*="Spine__Spine"]');
+}
+
 export async function detectSEQTAPlatform(forceRefresh: boolean = false): Promise<SEQTAPlatform> {
   // Check cache first unless forcing refresh
   if (!forceRefresh) {
@@ -91,10 +122,17 @@ export async function detectSEQTAPlatform(forceRefresh: boolean = false): Promis
   
   // Method 1: Check URL path (most reliable, fastest)
   const url = window.location.href.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
   if (url.includes('/learn/') || url.includes('/student/')) {
     detectedPlatform = 'learn';
   } else if (url.includes('/teach/') || url.includes('/ta/')) {
     detectedPlatform = 'teach';
+  } else if (
+    (hash.includes('page=') || hash.includes('/learn')) &&
+    isLearnLikeDOM()
+  ) {
+    // Learn hash routing without /learn/ in pathname
+    detectedPlatform = 'learn';
   }
   
   // Method 2: Check document title (if URL didn't give us a result)
@@ -109,26 +147,10 @@ export async function detectSEQTAPlatform(forceRefresh: boolean = false): Promis
   
   // Method 3: Check for platform-specific DOM elements (most expensive, last resort)
   if (detectedPlatform === 'unknown' && document.body) {
-    // Check for Teach-specific indicators (more specific first)
-    const teachIndicators = [
-      document.querySelector('[class*="Spine__Spine"]'), // Teach Spine component
-      document.querySelector('[id*="ta"]'),
-      document.querySelector('[class*="ta"]'),
-    ];
-    
-    if (teachIndicators.some(el => el !== null)) {
+    if (isLearnLikeDOM()) {
+      detectedPlatform = 'learn';
+    } else if (isTeachLikeDOM()) {
       detectedPlatform = 'teach';
-    } else {
-      // Check for Learn-specific indicators
-      const learnIndicators = [
-        document.querySelector('[class*="learn"]'),
-        document.querySelector('[id*="learn"]'),
-        document.querySelector('[class*="student"]'),
-      ];
-      
-      if (learnIndicators.some(el => el !== null)) {
-        detectedPlatform = 'learn';
-      }
     }
   }
   
@@ -192,6 +214,21 @@ export function detectSEQTAPlatformSync(): SEQTAPlatform {
     return 'learn';
   }
   if (url.includes('/teach/') || url.includes('/ta/')) {
+    return 'teach';
+  }
+
+  const hash = window.location.hash.toLowerCase();
+  if (
+    (hash.includes('page=') || hash.includes('/learn')) &&
+    isLearnLikeDOM()
+  ) {
+    return 'learn';
+  }
+
+  if (isLearnLikeDOM()) {
+    return 'learn';
+  }
+  if (isTeachLikeDOM()) {
     return 'teach';
   }
   

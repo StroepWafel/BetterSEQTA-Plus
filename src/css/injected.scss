@@ -232,10 +232,14 @@ select {
   justify-content: center;
 }
 
-// Specific positioning for settings button on Learn platform
+// Specific positioning for settings button on Learn platform (when not in flex titlebar)
 #AddedSettings:not([data-betterseqta="true"]) {
   top: 10px !important;
   z-index: 1000 !important;
+}
+
+#betterseqta-learn-titlebar #AddedSettings:not([data-betterseqta="true"]) {
+  top: auto !important;
 }
 [style="background-color: rgb(255, 255, 255);"] {
   color: black;
@@ -1769,6 +1773,16 @@ body:has([data-betterseqta-homepage="true"]) {
     display: none !important;
   }
   
+  // Teach home root: scroll + height (was inline styles)
+  #betterseqta-teach-home.betterseqta-teach-home-root.home-root,
+  #betterseqta-teach-home.home-root {
+    overflow-y: auto;
+    height: 100vh;
+    max-height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+
   // Ensure widget titles change color with theme
   #betterseqta-teach-home {
     .home-subtitle h2,
@@ -4166,6 +4180,56 @@ div.day-empty {
   position: absolute;
   right: 250px;
 }
+
+// Learn student: flex row for settings + dark toggle + user block (no absolute button offsets)
+#betterseqta-learn-titlebar.titlebar {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: nowrap;
+  padding-left: 12px;
+  box-sizing: border-box;
+
+  .betterseqta-header-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    position: static;
+
+    .addedButton {
+      position: static !important;
+      right: auto !important;
+      top: auto !important;
+      margin: 0 !important;
+    }
+
+    .addedButton svg {
+      margin: 0 !important;
+    }
+
+    #AddedSettings,
+    #LightDarkModeButton.DarkLightButton {
+      top: auto !important;
+      right: auto !important;
+    }
+  }
+
+  .userInfosvgdiv {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    margin: 0 0 0 8px !important;
+    flex-shrink: 0;
+  }
+
+  .userInfo {
+    padding-top: 0;
+    flex-shrink: 0;
+  }
+}
 .pagename {
   align-items: center;
   display: flex;
@@ -4242,6 +4306,11 @@ div.day-empty {
   right: 145px !important;
   z-index: 21 !important;
   top: 17.5px;
+}
+
+#betterseqta-learn-titlebar .DarkLightButton {
+  right: auto !important;
+  top: auto !important;
 }
 .whatsnewContainer {
   position: absolute;
